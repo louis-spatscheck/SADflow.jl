@@ -33,7 +33,7 @@ the desired observables.
 We consider the lattice $\phi^4$ action
 
 $$
-S[\phi]=\sum_x\left[-2\kappa\,\phi_x\sum_{\mu}\phi_{x+\hat\mu}+\phi_x^2+\lambda(\phi_x^2-1)^2\right].
+S[\phi]=\sum_x\left[-2\kappa\phi_x\sum_{\mu}\phi_{x+\hat\mu}+\phi_x^2+\lambda(\phi_x^2-1)^2\right].
 $$
 
 
@@ -60,12 +60,14 @@ $$
 
 and the transformed field is constructed from this learned deformation.
 
-![Residual architecture](images/residual.png)
+<p align="center">
+  <img src="images/residual.png" width="200">
+</p>
 
 The training objective is based on a KL-divergence-related loss,
 
 $$
-\mathcal{L}(\theta)D_{\mathrm{KL}}\left(q_\theta \,\|\, p\right),
+\mathcal{L}(\theta)=D_{\mathrm{KL}}\left(q_\theta \| p\right),
 $$
 
 where $p$ denotes the target distribution and $q_\theta$ the distribution
