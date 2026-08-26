@@ -1,0 +1,1 @@
+![Training demonstration](images/VarianceReduction.gif)
