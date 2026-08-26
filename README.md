@@ -33,18 +33,7 @@ the desired observables.
 We consider the lattice $\phi^4$ action
 
 $$
-S[\phi]
-=
-\sum_x
-\left[
--2\kappa\,\phi_x
-\sum_{\mu}
-\phi_{x+\hat\mu}
-+
-\phi_x^2
-+
-\lambda(\phi_x^2-1)^2
-\right].
+S[\phi]=\sum_x\left[-2\kappa\,\phi_x\sum_{\mu}\phi_{x+\hat\mu}+\phi_x^2+\lambda(\phi_x^2-1)^2\right].
 $$
 
 
@@ -76,12 +65,7 @@ and the transformed field is constructed from this learned deformation.
 The training objective is based on a KL-divergence-related loss,
 
 $$
-\mathcal{L}(\theta)
-=
-D_{\mathrm{KL}}
-\left(
-q_\theta \,\|\, p
-\right),
+\mathcal{L}(\theta)D_{\mathrm{KL}}\left(q_\theta \,\|\, p\right),
 $$
 
 where $p$ denotes the target distribution and $q_\theta$ the distribution
@@ -93,14 +77,7 @@ induced by the learned transformation.
 
 Observables are evaluated using reweighting factors of the form
 
-$$
-w(\phi)
-=
-\exp\left[
-S(\phi)-S(\phi')
-+\Delta J
-+\Delta \log J_f
-\right],
+$$w(\phi)=\exp\left[S(\phi)-S(\phi')+\Delta J+\Delta \log J_f\right],
 $$
 
 where the individual terms depend on the particular transformation and
