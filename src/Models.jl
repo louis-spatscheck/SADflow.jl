@@ -205,7 +205,7 @@ const ACTIVATIONS = Dict(
 Look up an activation by CLI-friendly name (see `ACTIVATIONS`). Replaces
 the inline `get(ACTIVATIONS, activ) do ... end` block that used to live at
 module/script scope in training_5.jl:710-712 — moved into a function so it
-doesn't run as a side effect on `using LatticeFlow`.
+doesn't run as a side effect on `using SADflow`.
 """
 function activation_fn(name::String)
     return get(ACTIVATIONS, name) do

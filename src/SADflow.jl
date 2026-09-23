@@ -1,4 +1,4 @@
-module LamPhi4_trw
+module SADflow
 
 
 using ADerrors
@@ -28,7 +28,7 @@ include("plotting.jl")      # plotting helpers
 include("io.jl")            # save/load helpers, run metadata
 # --- Public API -------------------------------------------------------
 # Keep this list in sync with what scripts/*.jl actually use. Anything not
-# exported here can still be reached as LatticeFlow.foo, which is fine for
+# exported here can still be reached as SADflow.foo, which is fine for
 # the more "internal" helpers (e.g. stack_complex_flux, build_source_flux).
 
 export Grid, BC_PERIODIC, BC_SF_ORBI, BC_SF_AFWB, BC_OPEN

@@ -4,7 +4,7 @@
 # runs the training loop, and saves the trained model + a quick training-
 # curve diagnostic plot. All physics/model/loss logic lives in src/ — this
 # script is orchestration only. Source: training_5.jl (whole file), with
-# the shared logic pulled into LatticeFlow and only the script-specific
+# the shared logic pulled into SADflow and only the script-specific
 # bits (CLI parsing, data loading, the epoch loop, saving) left here.
 #
 # Usage:
@@ -13,8 +13,8 @@
 using Pkg
 Pkg.activate(joinpath(@__DIR__, ".."))
 
-include(joinpath(@__DIR__, "..", "src", "LamPhi4_trw.jl"))
-using .LamPhi4_trw
+include(joinpath(@__DIR__, "..", "src", "SADflow.jl"))
+using .SADflow
 using ADerrors, FormalSeries
 using Flux
 using ArgParse

@@ -70,7 +70,7 @@ end
 """
     TrainingConfig
 
-Configuration for a LatticeFlow training run.
+Configuration for a SADflow training run.
 """
 struct TrainingConfig
     kappa::Float64
