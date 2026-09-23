@@ -1,11 +1,7 @@
-# src/lattice.jl
+# src/Lattice.jl
 #
-# Lattice geometry and boundary-condition bookkeeping.
-# Source: training_5.jl lines ~85-185 (Grid), ~312-320 (staple),
-#         ~363-369/404-410 (neighbour_sum, kept as ONE definition here --
-#         training_5.jl accidentally defines neighbour_sum/action TWICE
-#         with different dims= arguments; see note in action.jl), and
-#         ~522-545 (pad_periodic, originally inline in the model section).
+# Lattice geometry, boundary-condition bookkeeping and nearest-neighbour
+# helpers on periodic lattices.
 
 const BC_PERIODIC = 0
 const BC_SF_ORBI  = 1
@@ -124,19 +120,9 @@ end
 """
     neighbour_sum(x)
 
-Sum of nearest-neighbour field values along the first two (spatial) dims,
-with periodic boundary conditions, via `circshift`.
-
-NOTE: training_5.jl defines this function TWICE — once for 4D fields
-(dims (1,2,3,4), used during training) and once for 2D fields
-(dims (1,2), used in the correlator/analysis code). Julia just keeps the
-last definition, so as written only the 2D version is actually live and
-the "4D" call sites in the training loop are silently using the 2D
-circshift semantics too (which happens to work because `circshift` pads
-extra dims with 0-shift, but it's worth confirming this was intentional
-before relying on it). Pick ONE canonical version here; if both usages
-are genuinely needed, give them different names (e.g. `neighbour_sum` and
-`neighbour_sum_2d`) instead of relying on method shadowing.
+Sum of the forward nearest neighbours `φ(x+t̂) + φ(x+x̂)` along the first
+two (lattice) dims, with periodic boundary conditions. Works for fields of
+any rank; the remaining dims (channel, batch) are not shifted.
 """
 
 
@@ -150,7 +136,7 @@ end
     staple(f)
 
 Sum of the four nearest-neighbour shifts of `f` (±x, ±y), used in the
-φ⁴ action's hopping term. Source: training_5.jl:312-320.
+φ⁴ action's hopping term.
 """
 
 function staple(f::AbstractArray{T,Nd}) where {T,Nd}
@@ -171,7 +157,7 @@ end
 
 Pad the spatial dims of `x` (shape `(spatial..., C, B)`) with periodic
 (circular) boundary conditions. `pads[d]` is either an `Int` (symmetric
-pad) or a `(left, right)` tuple. Source: training_5.jl:522-545.
+pad) or a `(left, right)` tuple.
 """
 function pad_periodic(x::AbstractArray, pads)
     N = ndims(x) - 2

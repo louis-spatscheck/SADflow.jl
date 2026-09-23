@@ -1,7 +1,7 @@
-# src/action.jl
+# src/ActionPhi4.jl
 
 """
-    Phi4_params{T}
+    Phi4Params{T}
 
 Bare couplings of the 2D lattice φ⁴ theory.
 - `κ` : hopping parameter

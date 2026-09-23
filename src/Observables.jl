@@ -1,13 +1,8 @@
-# src/observables.jl
+# src/Observables.jl
 #
-# Physics observables extracted from raw configs or from a trained flow:
-# two-point correlators (direct + FFT), effective mass, and importance-
-# reweighted correlators. This is the "analysis" half of the pipeline —
-# scripts/generate_plots.jl (from plot_IT3.jl) should import these rather
-# than redefining them.
-#
-# Needs `using Roots` for `effective_mass_cosh`'s find_zero call — add
-# Roots to Project.toml if it isn't already a dependency.
+# Physics observables extracted from raw configurations or from a trained
+# transport network: two-point correlators (direct + FFT), effective
+# masses, and reweighted correlators.
 
 
 dsum(x; dims) = dropdims(sum(x; dims=dims); dims=dims)
@@ -22,7 +17,6 @@ uwcorr(x::AbstractArray{T,2}, args...) where {T} =
 `uwreal`-valued autocorrelation of `interpol_chain` (shape `(L, chainsize)`)
 around its own mean, either at each Monte Carlo "time slice" directly
 (`timeav=false`) or time-averaged over all cyclic shifts (`timeav=true`).
-Source: training_5.jl:412-451.
 """
 function correlator(interpol_chain::Array{T,2}, tag::String, niter_vec::Vector{Int64};
                      wpm=Dict{String,Vector{Float64}}(), ed=100, timeav=false) where T
@@ -81,17 +75,13 @@ end
 """
     two_point_correlator(pics, L1; ncfg=size(pics,4), tag="ensemble")
 
-Translation-averaged zero-momentum two-point correlator with `uwreal`
-error propagation, normalized so `C(0) = 1`:
+Standard (un-reweighted) zero-momentum two-point correlator with the
+source fixed at the first time slice, with `uwreal` error analysis and
+normalized so that `C(0) = 1`:
 
-    C(t) = (1/L1) Σ_{t0} ⟨ Φ(t0) Φ(t0+t) ⟩,    Φ(t) = Σ_x φ(t,x)
+    C(t) = ⟨ Φ(0) Φ(t) ⟩ / ⟨ Φ(0)² ⟩,    Φ(t) = Σ_x φ(t,x)
 
-Source: plot_IT3.jl:1035-1057. NOTE: the original signature took a `p`
-"args" struct for `L1`/`tag` (`ensemble_tag(p)`) that isn't part of the
-material reviewed so far — signature below takes `L1`/`tag` directly;
-adapt call sites in scripts/generate_plots.jl accordingly, or reintroduce
-whatever config struct `plot_IT3.jl` used once you've pulled the rest of
-that file in.
+This is the baseline the reweighted correlator is compared against.
 """
 function two_point_correlator(pics, L1::Int; ncfg=size(pics, 4), tag="ensemble")
     ϕ = dropdims(pics, dims=3)[:, :, 1:ncfg]
@@ -116,7 +106,6 @@ Importance-reweighted correlator using the trained flow's implicit
 Jacobian trace (via `FormalSeries` dual-number bookkeeping), returning
 `(corr=normalized_correlator, WT=reweighting_factors)`. Set `trace=false`
 to skip the (expensive) trace term for a cheaper approximate estimate.
-Source: plot_IT3.jl:739-785.
 """
 function reweighted_correlator(model, prior, params::Phi4Params; N=2000, tag="rw", T=Float64, trace=true,
                                ns_trace=25, rng=Random.default_rng())
@@ -166,7 +155,6 @@ Effective mass via the three-point formula
 `m_eff(t) = acosh((C(t+1)+C(t-1)) / (2 C(t)))`, valid for `1 < t < L_t-1`.
 Errors propagate through `uwreal` arithmetic automatically (implemented as
 `log(ratio + sqrt(ratio²-1))` since `acosh` isn't overloaded for `uwreal`).
-Source: plot_IT3.jl:1177-1201.
 """
 function effective_mass_acosh(corr::Vector{ADerrors.uwreal}, L_t::Int; tmax=L_t ÷ 2 - 1)
     tmax = min(tmax, length(corr) - 2)
@@ -193,9 +181,8 @@ end
     effective_mass_cosh(corr, L_t; tmax=L_t÷2)
 
 Cosh effective mass: solves `C(t+1)/C(t) = cosh(m·b)/cosh(m·a)` for `m` at
-each `t` (via `Roots.find_zero`, needs `using Roots`), then propagates the
-`uwreal` error through the implicit function theorem (analytic `dm/dratio`).
-Source: plot_IT3.jl:1204-1235.
+each `t` (via `Roots.find_zero`), then propagates the `uwreal` error
+through the implicit function theorem (analytic `dm/dratio`).
 """
 function effective_mass_cosh(corr::Vector{ADerrors.uwreal}, L_t::Int; tmax=L_t ÷ 2)
     tmax = min(tmax, length(corr) - 1)
@@ -233,7 +220,7 @@ end
     correlator_variance(corr)
 
 Per-time-slice variance `σ²(t) = err(C(t))²` of a `uwreal` correlator, for
-SNR/variance-comparison plots. Source: plot_IT3.jl:1476-1479.
+SNR/variance-comparison plots.
 """
 function correlator_variance(corr::Vector{ADerrors.uwreal})
     ADerrors.uwerr.(corr)

@@ -1,15 +1,15 @@
-# src/models.jl
+# src/Models.jl
 #
 # Model architecture: the periodic-boundary convolution layer, the
-# momentum-space "effective propagator" branch, and the two-branch flow
-# model that combines them. Source: training_5.jl:551-698.
+# momentum-space "effective propagator" branch, and the two-branch
+# transport network that combines them.
 
 """
     PeriodicConv(kernel, ch; stride=1, dilation=1, σ=identity, bias=true)
 
 A `Flux.Conv` layer wrapped with circular (periodic) padding on all
 spatial dims, so output size == input size under periodic BC.
-`kernel` e.g. `(3,3)`, `ch` is `in => out`. Source: training_5.jl:551-584.
+`kernel` e.g. `(3,3)`, `ch` is `in => out`.
 """
 struct PeriodicConv{C<:Conv,P}
     conv::C
@@ -37,10 +37,8 @@ end
 """
     pool_field(x, pool_size)
 
-Max-pool the first (time) dimension of `x` by `pool_size`. Currently
-unused by `make_model1` (was part of an earlier conditioning scheme in
-`EffectivePropagator`) — kept here in case you revive it; otherwise a
-candidate for deletion. Source: training_5.jl:586-592.
+Max-pool the first (time) dimension of `x` by `pool_size`. Not used by
+`make_model`; kept as a utility for alternative conditioning schemes.
 """
 function pool_field(x, pool_size)
     Nₜ, Nₓ, C, B = size(x)
@@ -50,16 +48,12 @@ function pool_field(x, pool_size)
 end
 
 """
-    EffectivePropagator(Nₜ; nodes=16, pool_size=4)
+    EffectivePropagator(Nₜ; pool_size=4)
 
-Small MLP `Σnet` mapping `(p̂₀, ⟨φ²⟩, ⟨φ⁴⟩)` conditioning to a momentum-space
-self-energy `Σ(p)`, used to build an effective propagator
-`1 / (p̂₀² + Σ(p))`. Source: training_5.jl:594-643.
-
-NOTE: `Σnet`'s hidden width is hardcoded to 16 in the constructor body
-rather than using the `nodes` keyword — worth deciding whether that's
-intentional before cleanup (the `nodes` arg is currently accepted but
-silently ignored inside `Σnet`).
+Small MLP `Σnet` (hidden width 16) mapping the lattice momenta `p̂₀` and
+the ensemble moments `⟨φ²⟩`, `⟨φ⁴⟩` of each configuration to a
+momentum-space self-energy `Σ(p)`, used to build an effective propagator
+`1 / (p̂₀² + Σ(p))`.
 """
 struct EffectivePropagator
     Σnet::Chain
@@ -97,7 +91,6 @@ end
     stack_complex_flux(x)
 
 Stack real/imag parts of a complex array along the channel dim (dim N-1).
-Source: training_5.jl:645-647.
 """
 stack_complex_flux(x) = cat(real.(x), imag.(x), dims=ndims(x) - 1)
 
@@ -106,7 +99,6 @@ stack_complex_flux(x) = cat(real.(x), imag.(x), dims=ndims(x) - 1)
 
 Embed a `(T, 1, C, B)` field at the t-only slice back into full lattice
 volume `vol = (T, spatial...)`, zero-padding the spatial dims.
-Source: training_5.jl:649-658.
 """
 function build_source_flux(x, vol)
     (T, V...) = vol
@@ -119,9 +111,8 @@ end
 """
     ModelWrapper(m)
 
-Thin wrapper so `trJ`/`trJJ` (losses.jl) can treat the flow model as a
-plain callable without Flux/Zygote getting confused about differentiating
-"into" the struct. Source: training_5.jl:332-336.
+Thin wrapper so `trJ`/`trJJ` (Losses.jl) can treat the transport network
+as a plain callable.
 """
 struct ModelWrapper
     m
@@ -129,14 +120,14 @@ end
 (w::ModelWrapper)(z) = w.m(z)
 
 """
-    make_model1(vol, κ; nodes=16, activ=tanh)
+    make_model(space, params; nodes=16, activation=tanh)
 
-The flow model: sum of a Fourier-space branch (FFT → 1×1 conv in momentum
-space → EffectivePropagator → build source → IFFT) and a real-space
-`PeriodicConv` branch (this is the `training_5.jl` variant: 9 stacked
-`PeriodicConv` layers, `1 → nodes → ... → nodes → 1`, one more than most
-other `training_*.jl` variants — see conversation notes on training_4 vs
-training_5). Source: training_5.jl:660-698.
+The transport network `f_θ` used in the thesis: the sum of
+
+- a Fourier-space branch (FFT → 1×1 convolutions on (Re, Im) →
+  `EffectivePropagator` → embed at zero spatial momentum → IFFT, scaled by
+  `N_x / 2κ`), and
+- a real-space branch of two `PeriodicConv` layers, `1 → nodes → 1`.
 """
 function make_model(space::Grid, params::Phi4Params{T}; nodes=16, activation=tanh) where T
 
@@ -163,14 +154,18 @@ function make_model(space::Grid, params::Phi4Params{T}; nodes=16, activation=tan
 
     conv_branch = Chain(
         PeriodicConv((3, 3), 1 => nodes; σ=activation, bias=false),
-        #PeriodicConv((3, 3), nodes => nodes; σ=activation, bias=false),
-        #PeriodicConv((3, 3), nodes => nodes; σ=activation, bias=false),
         PeriodicConv((3, 3), nodes => 1; σ=identity),
     ) |> Flux.f64
 
     return Chain(x -> fourier_branch(x) .+ conv_branch(x))
 end
 
+"""
+    make_CNN(space, params; nodes=16, activation=tanh)
+
+Alternative, purely real-space network: five `PeriodicConv` layers
+`1 → nodes → … → nodes → 1` followed by `exp`. Not used in the thesis runs.
+"""
 function make_CNN(space::Grid, params::Phi4Params{T}; nodes=16, activation=tanh) where T
 
     vol = space.iL
@@ -202,10 +197,7 @@ const ACTIVATIONS = Dict(
 """
     activation_fn(name::String)
 
-Look up an activation by CLI-friendly name (see `ACTIVATIONS`). Replaces
-the inline `get(ACTIVATIONS, activ) do ... end` block that used to live at
-module/script scope in training_5.jl:710-712 — moved into a function so it
-doesn't run as a side effect on `using LatticeFlow`.
+Look up an activation function by its command-line name (see `ACTIVATIONS`).
 """
 function activation_fn(name::String)
     return get(ACTIVATIONS, name) do

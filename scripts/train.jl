@@ -2,19 +2,17 @@
 #
 # Entry point: parses CLI args, loads prior configs, builds the model,
 # runs the training loop, and saves the trained model + a quick training-
-# curve diagnostic plot. All physics/model/loss logic lives in src/ — this
-# script is orchestration only. Source: training_5.jl (whole file), with
-# the shared logic pulled into LatticeFlow and only the script-specific
-# bits (CLI parsing, data loading, the epoch loop, saving) left here.
+# curve diagnostic plot. All physics/model/loss logic lives in the SADflow
+# package; this script only handles CLI parsing, data loading, the epoch
+# loop and saving.
 #
 # Usage:
-#   julia --project=. scripts/train.jl -k 0.25 -l 0.5 -e 200 -b 64 -n 16 -a tanh
+#   julia --project=. scripts/train.jl -k 0.24 -l 0.0 -e 200 -b 64 -n 4 -a tanh
 
 using Pkg
 Pkg.activate(joinpath(@__DIR__, ".."))
 
-include(joinpath(@__DIR__, "..", "src", "LamPhi4_trw.jl"))
-using .LamPhi4_trw
+using SADflow
 using ADerrors, FormalSeries
 using Flux
 using ArgParse
