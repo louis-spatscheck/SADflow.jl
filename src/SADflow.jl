@@ -12,6 +12,8 @@ using Statistics
 using LinearAlgebra
 using JLD2: @load
 import AbstractFFTs: fft, ifft
+import FFTW   # provides the FFT backend behind AbstractFFTs.fft/ifft
+import Roots  # Roots.find_zero in effective_mass_cosh
 import ForwardDiff: Dual, partials, value, Partials
 
 # Order matters: each file only depends on ones included before it.

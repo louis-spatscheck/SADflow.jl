@@ -1759,12 +1759,6 @@ version = "2.3.0"
     SymPyPythonCall = "bc8888f7-b21e-4b7c-a06a-5d9c9496438c"
     Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
-[[deps.SAD_Project]]
-deps = ["ADerrors", "AbstractFFTs", "ArgParse", "BDIO", "BSON", "Bijectors", "CUDA", "DifferentiationInterface", "Distributions", "FFTW", "FileIO", "Flux", "FormalSeries", "ForwardDiff", "Functors", "JLD2", "LaTeXStrings", "LinearAlgebra", "Pipe", "Plots", "Random", "Roots", "Statistics", "Test", "TimerOutputs", "Zygote", "cuDNN"]
-path = "."
-uuid = "4c343fbb-8290-4bf0-9a4f-c067482d6714"
-version = "0.1.0"
-
 [[deps.SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 version = "0.7.0"

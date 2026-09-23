@@ -5,9 +5,6 @@
 # reweighted correlators. This is the "analysis" half of the pipeline —
 # scripts/generate_plots.jl (from plot_IT3.jl) should import these rather
 # than redefining them.
-#
-# Needs `using Roots` for `effective_mass_cosh`'s find_zero call — add
-# Roots to Project.toml if it isn't already a dependency.
 
 
 dsum(x; dims) = dropdims(sum(x; dims=dims); dims=dims)

@@ -2,8 +2,7 @@ using Test
 using Random
 using Flux
 
-include(joinpath(@__DIR__, "..", "src", "SADflow.jl"))
-using .SADflow
+using SADflow
 
 include("test_api.jl")
 include("test_lattice_action.jl")

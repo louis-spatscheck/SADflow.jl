@@ -8,13 +8,12 @@
 # bits (CLI parsing, data loading, the epoch loop, saving) left here.
 #
 # Usage:
-#   julia --project=. scripts/train.jl -k 0.25 -l 0.5 -e 200 -b 64 -n 16 -a tanh
+#   julia --project=. scripts/train.jl -k 0.24 -l 0.0 -e 200 -b 64 -n 4 -a tanh
 
 using Pkg
 Pkg.activate(joinpath(@__DIR__, ".."))
 
-include(joinpath(@__DIR__, "..", "src", "SADflow.jl"))
-using .SADflow
+using SADflow
 using ADerrors, FormalSeries
 using Flux
 using ArgParse
