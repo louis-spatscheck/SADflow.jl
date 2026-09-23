@@ -1,0 +1,232 @@
+using Pkg
+Pkg.activate(joinpath(@__DIR__, ".."))
+
+include(joinpath(@__DIR__, "..", "src", "LamPhi4_trw.jl"))
+using .LamPhi4_trw
+using ADerrors, FormalSeries
+using Flux
+using ArgParse
+using Random
+
+##
+
+
+
+config = TrainingConfig(
+    0.24,
+    0.0,
+    100,
+    32,
+    128,
+    1.0e-4,
+    0.7,
+    4,
+    1,
+    "tanh",
+    1234,
+    0.0,       # weight_decay
+    100,       # N_eval
+    8,         # L1
+    8,         # L2
+    8,         # B
+    joinpath(@__DIR__, "..", "priors"),
+    "none",
+)
+
+Random.seed!(config.seed)
+rng = MersenneTwister(config.seed)
+
+space = Grid{2}((8, 8 ), (8, 8))
+params_phi4 = Phi4Params(config.kappa, config.lambda)
+
+plots_dir  = joinpath(config.output_dir, "plots")
+models_dir = joinpath(config.output_dir, "models")
+mkpath(plots_dir); mkpath(models_dir)
+
+run_tag = "2d_l$(config.lambda)_k$(config.kappa)_L_$(config.L1)_$(config.L2)_nodes$(config.nodes)_bs$(config.batchsize)_activation$(config.activation)_lr$(config.lrate)"
+
+model_path = joinpath(models_dir, "$(run_tag).bson")
+metadata_path = joinpath(models_dir, "$(run_tag)_metadata.jld2")
+
+##
+
+data_file = joinpath(
+    config.priors_dir,
+    "2d_l$(config.lambda)_k$(config.kappa)_L_$(config.L1)_$(config.L2).jld2",
+)
+
+metadata = build_run_metadata(
+    config;
+    data_file=data_file,
+    run_tag=run_tag,   
+)
+
+pics = load_prior_data(data_file)
+
+var_z = estimate_source_variance(pics)
+
+prior, prior_test, train_indices, test_indices =
+    split_data(pics, config.split; rng=rng)
+##
+build_heatmap_example(prior, config)
+
+##
+function make_CNN(space::Grid, params::Phi4Params{T}; nodes=16, activation=tanh) where T
+
+    vol = space.iL
+    Nₜ = vol[1]
+    Nₓ = prod(vol[2:end])
+
+    conv_branch = Chain(
+        PeriodicConv((3, 3), 1 => nodes; σ=activation, bias=false),
+        PeriodicConv((3, 3), nodes => nodes; σ=activation, bias=false),
+        PeriodicConv((3, 3), nodes => 1; σ=identity),
+    ) |> Flux.f64
+
+    return Chain(x -> conv_branch(x),
+                x -> exp.(x))
+end
+
+activ = activation_fn(config.activation)
+model = make_model(
+    space, 
+    params_phi4; 
+    nodes=config.nodes, 
+    activation=activ)
+##
+
+using Plots
+
+ϵ = Series{Float64,2}((0.0,1.0))
+N_corr = 1000
+
+PHI =  Array{Series{Float64,2},4}(undef, config.L1, config.L2 ,1, N_corr)
+for n in 1:N_corr
+    for i in 1:config.L1
+        for j in 1:config.L2
+            PHI[i,j,1,n] = Series{Float64,2}((pics[i,j,1,n], 0.0))
+        end
+    end
+end
+
+
+##
+function build_heatmap_example(data::Array{T, Nd}, config; title="Heatmap", xlabel="x", ylabel="t") where {T,Nd}
+      example = data[:,:,1,1]  # Assuming data is of shape (Lx, Ly, C, N)
+      p = heatmap(example, color=:viridis, xlabel=xlabel, ylabel=ylabel,
+                size=(400, 350), dpi=150, margin=2Plots.mm)
+      return p
+end
+
+build_heatmap_example(prior, config)
+
+##
+build_heatmap_example(model(prior[:,:,:,1:10]), config)
+##
+
+source_term = sum(PHI[1,:,1,:], dims=1)[1,:]
+WT_pre = exp.( - ϵ .* source_term )
+
+WTs_pre = []
+
+for n in 1:N_corr
+    push!(WTs_pre, (WT_pre[n])[2])
+end
+histogram(WTs_pre , bins=50, xlabel=L"\omega^{(1)}", ylabel="Frequency", alpha=0.5, label="Pre-Training")
+
+##
+
+
+loss_function = KLloss_batch
+
+optimiser = OptimiserChain(WeightDecay(config.weight_decay), Flux.Adam(config.lrate))
+opt = Flux.setup(optimiser, model)
+
+##
+
+fval = zeros(Float64, config.epochs)
+ftest = zeros(Float64, config.epochs)
+wESS  = zeros(Float64, config.epochs)
+correlators_trw = Vector{Vector{ADerrors.uwreal}}(undef, config.epochs)
+
+for epoch in 1:config.epochs
+    train_epoch!(model, opt, prior, config.batchsize, var_z, params_phi4;
+                 loss_function=loss_function, K=1, rng=rng)
+
+    if epoch % 2 == 1
+        train_loss, test_loss = evaluate_losses(model, prior, prior_test, config.test_batchsize,
+                                                var_z, params_phi4;
+                                                loss_function=loss_function, K=1,
+                                                rng=rng)
+        fval[epoch] = train_loss
+        ftest[epoch] = test_loss
+
+        println("Epoch $epoch | Train Loss: $(fval[epoch])")
+        println("Epoch $epoch | Test Loss:  $(ftest[epoch])")
+    end
+
+    if epoch % 10== 9
+        rw = evaluate_reweighting_checkpoint(model, prior_test, params_phi4;
+                                             N=config.N_eval, tag=string(epoch), trace_samples=1,
+                                             rng=rng)
+        wESS[epoch] = rw.ess
+        correlators_trw[epoch] = rw.corr
+        println("Epoch $epoch | Test ESS: $(rw.ess)")
+    end
+end
+
+##
+
+ep_loss = 1:2:config.epochs      # epochs at which the loss was logged   (epoch % 2 == 1)
+ep_ess  = 9:10:config.epochs     # epochs at which the ESS was logged    (epoch % 10 == 9)
+
+p_loss = plot(ep_loss, fval[ep_loss], label="train", xlabel="epoch", ylabel="loss", title="KL loss")
+plot!(p_loss, ep_loss, ftest[ep_loss], label="test")
+
+if isempty(ep_ess)
+    plot(p_loss, size=(450, 320))
+else
+    p_ess = plot(ep_ess, wESS[ep_ess], marker=:circle, legend=false,
+                 xlabel="epoch", ylabel="ESS (held-out)", title="Effective sample size")
+    plot(p_loss, p_ess, layout=(1, 2), size=(900, 320))
+end
+
+##
+f = model(pics)
+build_heatmap_example(f, config)
+
+##
+
+
+PHIT =  Array{Series{Float64,2},4}(undef, config.L1, config.L2 ,1, N_corr)
+for n in 1:N_corr
+    for i in 1:config.L1
+        for j in 1:config.L2
+            PHIT[i,j,1,n] = Series{Float64,2}((pics[i,j,1,n], f[i,j,1,n]))
+        end
+    end
+end
+#PHIT_T = sum(PHIT, dims=2)[:,1,:]
+
+##
+action_term = (action(PHI,params_phi4) .- action(PHIT,params_phi4))[1,1,1,:]
+source_term = sum(PHIT[1,:,1,:], dims=1)[1,:]
+trace_term = trJ(model, pics[:,:,:,1:N_corr]; ns=1)[:,1]
+WT_post = exp.(action_term .+  ϵ .* source_term + ϵ .* trace_term)
+
+
+
+
+WTs_post = []
+
+for n in 1:N_corr
+    push!(WTs_post, (WT_post[n])[2])
+end
+##
+using LaTeXStrings
+
+histogram(WTs_pre, bins=50,  alpha=0.5, label="Pre-Training")
+histogram!(WTs_post , bins=50, xlabel=L"\omega^{(1)}", ylabel="Frequency", alpha=0.5, label="Post-Training")
+
+
+##
