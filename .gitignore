@@ -1,0 +1,13 @@
+# Training output
+results/
+models_free1/
+data_free1/
+figs_thesis/
+
+# Editors and notebooks
+.vscode/
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db

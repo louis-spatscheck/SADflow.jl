@@ -1,4 +1,4 @@
-# src/losses.jl
+# src/Losses.jl
 #
 
 
@@ -107,8 +107,8 @@ end
 """
     KLloss_batch(z, F, σ², params; K=5)
 
-Batched (non-reduced-to-scalar-until-the-end) KL loss — this is the one
-actually used as `loss_function` in the `training_5.jl` training loop.
+Leading-order KL loss averaged over the batch, keeping the per-sample
+terms until the final mean. This is the loss used for training.
 """
 function KLloss_batch(z, F, σ², params::Phi4Params; K=5)
     func = ModelWrapper(F)

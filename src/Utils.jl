@@ -1,4 +1,4 @@
-# src/data_utils.jl
+# src/Utils.jl
 #
 # Batch sampling helpers used in the training loop.
 

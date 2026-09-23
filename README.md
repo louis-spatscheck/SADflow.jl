@@ -210,7 +210,7 @@ SADflow.jl/
 │   └── Utils.jl          # batching and shuffling
 ├── scripts/              # train.jl, plot_results.jl
 ├── examples/             # walkthrough notebook
-├── hpc/                  # cluster scripts used for the thesis runs
+├── hpc/                  # thesis production scripts (see hpc/README.md)
 ├── test/                 # test suite (Pkg.test())
 ├── priors/               # Monte Carlo ensembles
 ├── images/               # figures used in this README

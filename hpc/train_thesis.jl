@@ -1,3 +1,17 @@
+# hpc/train_thesis.jl
+#
+# Standalone training script used for the production runs of the thesis
+# (32×8 lattice, κ/λ scans). It predates the SADflow package and carries
+# its own copies of the lattice, model and loss code; it is kept as-run for
+# reproducibility. New work should use scripts/train.jl and the package.
+#
+# Usage (from the repository root; expects ./priors/2d_l{λ}_k{κ}_L_32_8.jld2):
+#   julia --project=. hpc/train_thesis.jl -k 0.2485 -l 0.0 -e 22200 \
+#        -b 256 -d 1 -n 4 -r 1e-4 -a relu --save_every 200
+#
+# Writes per-epoch models to ./models_free1/ and training metrics to
+# ./data_free1/, which hpc/plot_thesis.jl reads.
+
 using Pkg
 Pkg.activate(".")
 using ADerrors

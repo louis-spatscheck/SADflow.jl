@@ -1,17 +1,18 @@
-#/usr/bin/enva ‘julia’: No sucis_plots.jl
+# hpc/plot_thesis.jl
 #
-# Build the full set of analysis plots for a single (λ, κ) trained-flow run:
+# Build the full set of analysis plots for a single (λ, κ) run of
+# hpc/train_thesis.jl:
 #   - training metrics (loss, wESS, F1/F2/F3 components)
 #   - relative-error-vs-free-theory across epochs (when λ = 0)
 #   - reweighted correlator and effective mass at selected epochs
 #   - signal-to-noise at fixed t across epochs
 #
-# Usage:
-#   julia generate_thesis_plots.jl --lambda 0.0 --kappa 0.2485 \
+# Usage (from the repository root):
+#   julia --project=. hpc/plot_thesis.jl --lambda 0.0 --kappa 0.2485 \
 #        --L1 32 --L2 8 --depth 1 --nodes 4 --bs 256 --activ relu \
 #        --lr 1e-4 --N 22000 --ncfg 10000 \
-#        --epochs 1000,1800,10600,22200 \
-#        --outdir ./results/figs_thesis
+#        --epochs_load 200:200:22200 --epochs_show 1000,1800,10600,22200 \
+#        --outdir ./figs_thesis
 # =============================================================================
 using Pkg
 Pkg.activate(".")
@@ -32,15 +33,6 @@ using Roots
 using FormalSeries
 using ForwardDiff
 # -----------------------------------------------------------------------------
-
-# TODO: confirm the actual paths. The file you pasted defines:
-#   pad_periodic, PeriodicConv, EffectivePropagator, EPApply, FFTLayer,
-#   StackComplex, BuildSource, IFFTLayer, TwoBranch, make_model1,
-#   stack_complex_flux, build_source_flux, pool_field
-# Pick whichever file(s) contain these:
-#include(joinpath(@__DIR__, "..", "src", "model.jl"))
-#include(joinpath(@__DIR__, "..", "src", "reweighting.jl"))   # reweighted_correlator, action, source
-#include(joinpath(@__DIR__, "..", "src", "utils.jl"))         # nonzero_idx, dsum, sumvol, uwc, ...
 
 # -----------------------------------------------------------------------------
 # Argument parsing
@@ -556,9 +548,8 @@ end
     load_configurations(args, p) -> Array{Float64, 4}
 
 Load `pics`, shape (L1, L2, 1, N_cfg), of φ-field configurations for the
-physical ensemble (depends on λ, κ, L1, L2).
-
-TODO: confirm the actual filename and the variable name inside the .jld2.
+physical ensemble (depends on λ, κ, L1, L2), from
+`<cfgdir>/2d_l{λ}_k{κ}_L_{L1}_{L2}.jld2`.
 """
 function load_configurations(args, p)
     fname = joinpath(args["cfgdir"], ensemble_tag(p) * ".jld2")

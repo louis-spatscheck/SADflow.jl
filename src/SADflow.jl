@@ -1,6 +1,5 @@
 module SADflow
 
-
 using ADerrors
 using FormalSeries
 using Flux
@@ -19,19 +18,18 @@ import ForwardDiff: Dual, partials, value, Partials
 # Order matters: each file only depends on ones included before it.
 include("Lattice.jl")       # Grid, boundary conditions, staple, neighbour_sum
 include("AutoDiff.jl")      # Dual-aware fft/ifft, ADerrors <-> FormalSeries glue
-include("ActionPhi4.jl")        # Phi4_params, action, f_HS_f
-include("Models.jl")        # PeriodicConv, EffectivePropagator, make_model1
+include("ActionPhi4.jl")    # Phi4Params, action, hessian, source_derivative
+include("Models.jl")        # PeriodicConv, EffectivePropagator, make_model
 include("Losses.jl")        # trJ/trJJ estimators, KLloss family
-include("Utils.jl")    # shuffle_data, select_random_batch
+include("Utils.jl")         # shuffle_data, select_random_batch
 include("Observables.jl")   # correlators, effective mass, reweighting
 include("Training.jl")      # train/eval orchestration helpers
-include("data.jl")
+include("data.jl")          # load_prior_data, split_data
 include("plotting.jl")      # plotting helpers
 include("io.jl")            # save/load helpers, run metadata
 # --- Public API -------------------------------------------------------
-# Keep this list in sync with what scripts/*.jl actually use. Anything not
-# exported here can still be reached as SADflow.foo, which is fine for
-# the more "internal" helpers (e.g. stack_complex_flux, build_source_flux).
+# Internal helpers that are not exported (e.g. stack_complex_flux,
+# build_source_flux) are still reachable as SADflow.<name>.
 
 export Grid, BC_PERIODIC, BC_SF_ORBI, BC_SF_AFWB, BC_OPEN
 export staple, neighbour_sum, pad_periodic

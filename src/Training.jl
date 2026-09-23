@@ -1,7 +1,7 @@
-# src/training.jl
+# src/Training.jl
 #
 # Training/evaluation orchestration helpers used by scripts/*.jl.
-# Keep scientific kernels in losses.jl / observables.jl and keep scripts thin.
+# Scientific kernels live in Losses.jl / Observables.jl.
 
 """
     train_epoch!(model, opt, prior, batchsize, var_z, params; loss_function=KLloss_batch, K=20)
